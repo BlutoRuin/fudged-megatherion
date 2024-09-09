@@ -60,6 +60,10 @@ class Column(MutableSequence):# implement MutableSequence (some method are mixed
         # cast function (it casts to floats for Float datatype or
         # to strings for String datattype)
         self._data = [self._cast(value) for value in data]
+    
+    #TODO: Funkce která vrátí typ Columnu
+    def get_type(self):
+        return self.dtype
 
     def __len__(self) -> int:
         """
@@ -166,7 +170,7 @@ class DataFrame:
         :param columns: columns of dataframe (key: name of dataframe),
                         lengths of all columns has to be the same
         """
-        assert len(columns) > 0, "Dataframe without columns is not supported"
+        assert  len(columns) > 0, "Dataframe without columns is not supported"
         self._size = common(len(column) for column in columns.values())
         # deep copy od dict `columns`
         self._columns = {name: column.copy() for name, column in columns.items()}
@@ -236,8 +240,26 @@ class DataFrame:
         Appends new row to dataframe.
         :param row: tuple of values for all columns
         """
+        print(row)
+        row = list(row) #I hate tuples
+        print(row)
+        if len(row) != len(self._columns):
+             raise ValueError("Row has more values than there are columns") #TODO: dej tam variabli at se lip debuguje
         
-        ...
+        col_keys = list(self._columns.keys())
+        print(col_keys)
+
+        for i in range(len(self._columns)):
+            col_name = col_keys[i]
+            value = row[i]
+
+            col = self._columns[col_name]
+
+            col.append(value)
+        self._size += 1
+        #TODO: zkontrolovat aby row mel delku stejnou jako pocet columns, pripadne pridat NaN value; zkontrolovat datatype
+        
+
 
     def filter(self, col_name:str,
                predicate: Callable[[Union[float, str]], bool]) -> 'DataFrame':
@@ -289,24 +311,184 @@ class DataFrame:
         """
         col = self._columns[col_name]
         col[row_index] = col._cast(value)
+    
+    def column_type(self, col_name):
+        assert isinstance(col_name, str), "should be string"
+        return self._columns[col_name].get_type()
 
-if __name__ == "__main__":
-    df = DataFrame(dict(
-        a=Column([None, 3.1415], Type.Float),
-        b=Column(["a", 2], Type.String),
-        c=Column(range(2), Type.Float)
-        ))
-    df.setvalue("a", 1, 42)
-    print(df)
 
-for line in df:
-    print(line)
+    def transpose(self):
+           df_len = len(self)
+           print(self[0])
+           col_type = Type.Float
+           for key in self.columns:
+               self.column_type(key)
+               if self.column_type(key) == Type.String:
+                   col_type = Type.String
+                   break
+                   
+           df_t = DataFrame({
+               'col0' : Column(self[0], col_type)
+               }
+           )
+           for i in range(1, len(self)):
+               df_t.append_column(
+                   "col"+str(i),
+                    Column(self[i], col_type) )
+            
 
+            #TODO: Zkontrolovat jestli má nějaké column string a v případě změnit typ :DONE
+
+           return df_t
+
+    def product(self, axis: int = 0):
+        product = []
+        if axis == 1:
+            for row in range(0,len(self)):
+                #print("we are on row" +str(row))
+                multi = 1
+                for value in self[row]:
+                    #print("culum")
+                    multi *= value
+                    print(multi)
+                    #print(i)
+                product.append(multi)    
+                
+        elif axis == 0:
+            for column in self._columns.values():
+                #print("culum")
+                multi = 1
+                for value in column._data:
+                    multi *= value
+                    #print(multi)
+                product.append(multi)
+        
+        print(product)
+        pf = DataFrame({'product': Column(product, Type.Float)})
+        return pf
+        #TODO:osetrit string typy 
+
+    def replace(self, to_replace, value):
+        if type(to_replace) != list:
+            to_replace = [to_replace]
+            #print(to_replace)
+            
+        for column in self._columns.values():
+            for i in range(len(column)):
+                if column[i] in to_replace:
+                    column[i] = value
+                print(column[i])
+    
+    def shift(self, periods):
+        nd = {}
+        for key in self.columns:
+            sl = []
+            for n in range(periods):
+                sl.append("NaN")
+            column = self._columns[key]
+            for i in range(len(column)-periods):
+                sl.append(column[i])
+            print(sl)
+            nd[key] = Column(sl, Type.Float)
+
+        ndf = DataFrame(nd)
+        #print(ndf)
+        return(ndf)
+            #TODO: udelej dictionary, key je key, values jsou list sl[], nezapomenout na type(pozdeji)
+
+    def cumprod(self, axis: int = 0):
+        key_list = []
+        k=-1
+        for key in self._columns.keys():
+            key_list.append(key)
+        if axis == 0:
+            df_p = DataFrame({ 'delete' : Column([11], Type.Float) })
+            for column in self._columns.values(): #DO EVERYTHING, THROUGH THE FUCKING KEYS YOU PINAPPLE-SPRINKLED-DONUT, THIS DOESNT WORK!!!!!
+                k += 1
+                dl = []
+                m = 1
+                print('new column')
+                print(column._data)
+                for i in range(len(column)):
+                    value = column[i]
+                    tm = column[i]
+                    value *= m
+                    m *= tm
+                    print(column[i])
+                    print(m)
+                    dl.append(value)
+                    
+                    #TODO: osetrit kdyz int neni 1 nebo dva, osertrit string typy
+                    
+                df_p.append_column(key_list[k], Column(dl, Type.Float))
+                print(df_p)
+
+            df_p._columns.pop('delete')
+            return df_p
+                
+
+        else:
+            df_p = DataFrame({ 'delete' : Column([], Type.Float) })
+            
+            for i in range(len(self)):
+                k += 1
+                m = 1
+                print('new row')
+                for value in self[i]:
+                    tm = value
+                    f_value = value
+                    f_value *= m
+                    m *= tm
+                    dl.append(f_value)
+                
+                
+        
+
+
+
+    
+
+# if __name__ == "__main__":
+#    df = DataFrame(dict(
+#        a=Column([None, 3.1415], Type.Float),
+#        b=Column(["a", 2], Type.String),
+#        c=Column(range(2), Type.Float)
+#        ))
+#    df.setvalue("a", 1, 42)
+#    print(df)
+
+# for line in df:
+#    print(line)
+
+#print(df[1][1])
+
+#print(df.transpose())
+
+#test = list((7,7,7,7))
+#print(test)
+#test2 = [7,7,7,2]
+#print(test2)
 kus_dreva = DataFrame(dict(
-    a=Column([7, 5], Type.Float),
-    b=Column([1, 2.3], Type.Float),
-    ))
-print("mezera")
-print(kus_dreva.__getitem__(1))
-###
-#...
+     a=Column([7, 5, 6], Type.Float),
+     b=Column([1, 2.3, 0.5], Type.Float),
+     ))
+#print("mezera")
+#print(kus_dreva.__getitem__(1))
+#print(kus_dreva.column_type("f"))
+#print("mezera")
+#kus_dreva.append_column("c", Column(["o","cholera"], Type.String)) 
+kus_dreva.append_column("c", Column([5, 47, 4], Type.Float))
+#print(kus_dreva)
+#print(kus_dreva.transpose())
+#print(kus_dreva.product(1))
+#kus_dreva._columns['a'][0] = 1 
+#print(kus_dreva._columns['a'][0])
+
+#kus_dreva.replace([7,5], 13)
+#print(kus_dreva)
+#kus_dreva.append_row((9,8,6))
+#print(kus_dreva)
+#kus_dreva.shift(1)
+
+print(kus_dreva.cumprod(0))
+
